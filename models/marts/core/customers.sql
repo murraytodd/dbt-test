@@ -1,8 +1,6 @@
-use warehouse PC_DBT_WH;
-
 with customers as (
 
-    select * from {{ ref('stg_customers')}}
+    select * from {{ ref('stg_customers') }}
 
 ),
 
@@ -27,6 +25,18 @@ customer_orders as (
 
 ),
 
+order_payments as (
+
+    select * from {{ ref('fct_orders') }}
+
+),
+
+lifetime_value as (
+
+    select customer_id, sum(amount) as cltv from order_payments group by customer_id
+
+),
+
 final as (
 
     select
@@ -35,11 +45,13 @@ final as (
         customers.last_name,
         customer_orders.first_order_date,
         customer_orders.most_recent_order_date,
-        coalesce(customer_orders.number_of_orders, 0) as number_of_orders
+        coalesce(customer_orders.number_of_orders, 0) as number_of_orders,
+        cltv
 
     from customers
 
     left join customer_orders using (customer_id)
+    left join lifetime_value on lifetime_value.customer_id = customers.customer_id
 
 )
 
